@@ -31,9 +31,9 @@ begin
     gem.name = "wice_grid"
     gem.summary = %Q{Rails Grid Plugin}
     gem.description = %Q{A Rails grid plugin to create grids with sorting, pagination, and (automatically generated) filters }
-    gem.email = "yuri.leikind@gmail.com"
-    gem.homepage = "http://github.com/lekind/wice_grid"
-    gem.authors = ["Yuri Leikind"]
+    gem.email = "aafaqhassan@gmail.com"
+    gem.homepage = "https://github.com/aafaq-hassan/wice_grid"
+    gem.authors = ["Aafaq Hassan"]
     gem.add_dependency "kaminari", ">= 0.13.0"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
