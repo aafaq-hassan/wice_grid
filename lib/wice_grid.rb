@@ -64,6 +64,7 @@ module Wice
 
     def initialize(klass_or_relation, controller, opts = {})  #:nodoc:
       @controller = controller
+      @logger = opts[:logger] || Rails.logger
 
       @relation = klass_or_relation
       @klass = klass_or_relation.is_a?(ActiveRecord::Relation) ?
@@ -109,7 +110,21 @@ module Wice
         :saved_query          => nil,
         :total_entries        => nil,
         :with_paginated_resultset  => nil,
-        :with_resultset       => nil
+        :with_resultset       => nil,
+
+        # Sphinx begin
+        :index                => nil,
+        :index_weights        => nil,
+        :search_text          => nil,
+        :match_mode           => nil,
+        :rank_mode            => nil,
+        :star                 =>nil,
+        :with                 => nil,
+        :without              => nil,
+        :sort_mode            => nil,
+        :is_sphinx            => false,
+        :is_facets            => false
+        # Sphinx end
       }
 
       # validate parameters
@@ -136,18 +151,34 @@ module Wice
       @status = HashWithIndifferentAccess.new
 
       if @options[:order]
-        @options[:order] = @options[:order].to_s
-        @options[:order_direction] = @options[:order_direction].to_s
-
-        @status[:order_direction] = @options[:order_direction]
-        @status[:order] = @options[:order]
-
+        # Sphinx begin
+        if @options[:sort_mode].blank?
+          @status[:order_direction] = @options[:order_direction].to_s
+          @status[:order] = @options[:order].to_s
+        else
+          @status[:sort_mode] = @options[:sort_mode]
+          @status[:order] = @options[:order]
+        end
+        # Sphinx end
       end
       @status[:total_entries] = @options[:total_entries]
       @status[:per_page] = @options[:per_page]
       @status[:page] = @options[:page]
       @status[:conditions] = @options[:conditions]
       @status[:f] = @options[:f]
+
+      # Sphinx begin
+      @status[:index] = @options[:index] unless @options[:index].blank?
+      @status[:index_weights] = @options[:index_weights] unless @options[:index_weights].blank?
+      @status[:search_text] = @options[:search_text] unless  @options[:search_text].blank?
+      @status[:match_mode] = @options[:match_mode] unless  @options[:match_mode].blank?
+      @status[:with] = @options[:with] unless  @options[:with].blank?
+      @status[:without] = @options[:without] unless  @options[:without].blank?
+      @status [:is_sphinx]= @options[:is_sphinx]
+      @status [:is_facets]= @options[:is_facets]
+      @klass.define_indexes if @status[:is_sphinx] or @status[:is_facets]
+      @status[:indexes] = collect_indexes if @status[:is_sphinx] or @status[:is_facets]
+      # Sphinx end
 
       process_loading_query
       process_params
@@ -233,7 +264,19 @@ module Wice
       end
     end
 
+    # Sphinx begin
+    def collect_indexes
+      all_indexes =[]
+
+      for index in @klass.sphinx_indexes.first.fields
+        all_indexes << index.unique_name
+      end
+
+      all_indexes
+    end
+
     def form_ar_options(opts = {})  #:nodoc:
+      return form_ar_options_for_sphinx if @status[:is_sphinx] || @status[:is_facets]
 
       return if @ar_options_formed
       @ar_options_formed = true unless opts[:forget_generated_options]
@@ -279,9 +322,138 @@ module Wice
       @ar_options[:group] = @options[:group]
     end
 
+    def form_ar_options_for_sphinx(opts = {})  #:nodoc:
+      return if @ar_options_formed
+      @ar_options_formed = true unless opts[:forget_generated_options]
+
+      # conditions
+      if @table_column_matrix.generated_conditions.size == 0 and @status[:f].blank?
+        @logger.debug "should only do this with no filters given"
+        @status.delete(:f)
+      end
+
+      if !opts[:skip_ordering] && @status[:order]
+        @logger.debug "form_ar-options_status_inspect \n#{@status.inspect}"
+        
+        unless @status[:sort_mode].blank?
+          @ar_options[:order] = get_column_name(@status[:order])
+          
+          if @status[:order_direction].blank?
+            @ar_options[:sort_mode] = @status[:sort_mode]
+          else
+            @ar_options[:sort_mode] = @status[:order_direction].to_sym
+          end
+        else
+          @ar_options[:sql_order] = @status[:order]
+          @ar_options[:sql_order] = "#{@ar_options[:sql_order]} " \
+            "#{@status[:order_direction]}" \
+            unless @status[:order_direction].blank?
+        end
+        
+        @logger.debug "ar_options_order : #{@ar_options[:order]} and " \
+          "sort_mode : #{@ar_options[:sort_mode]} and sql_order : " \
+          "#{@ar_options[:sql_order]} and order_direction : " \
+          "#{@ar_options[:order_direction]}" 
+      end
+
+      if self.output_html? or self.output_csv?
+        @ar_options[:per_page] = @status[:pp] || @status[:per_page]
+        @ar_options[:page] = @status[:page]
+        @ar_options[:total_entries] = @status[:total_entries] if @status[:total_entries]
+      end
+
+      add_filter_to_conditions
+      add_filter_to_with
+
+      @ar_options[:index] = @options[:index] unless @options[:index].blank?
+      @ar_options[:index_weights] = @options[:index_weights] unless @options[:index_weights].blank?
+      @ar_options[:match_mode] = @options[:match_mode] unless @options[:match_mode].blank?
+      @ar_options[:joins]   = @options[:joins] unless  @options[:joins].blank?
+      @ar_options[:include] = @options[:include]  unless  @options[:include].blank?
+      @ar_options[:with] = @options[:with]  unless  @options[:with].blank?
+      @ar_options[:without] = @options[:without]  unless  @options[:without].blank?
+      @ar_options[:conditions] = @options[:conditions] unless @options[:conditions].blank?
+      @ar_options[:star] = @options[:star] unless @options[:star].blank?
+      @ar_options[:retry_stale] = @options[:retry_stale] unless @options[:retry_stale].blank?
+      @logger.debug "ar_options_inspect \n #{@ar_options.inspect}"
+      @ar_options
+    end
+
+    def get_column_name(key)
+      if key =~/\./
+        new_key = key.gsub(/\./,"_")
+        return new_key.to_sym
+      else
+        return key.to_sym
+      end
+    end
+    
+    def add_filter_to_conditions
+      if @status[:f]
+        @logger.debug "i have conditional filters i'll process them....."
+        @status[:f].each_pair { |key, val|
+          column  = get_column_name(key)
+          @logger.debug "index: #{@status.inspect} key : #{key} column: #{column} equal: #{@status.include?(column)}"
+          if @status[:indexes].include?(column)
+            @logger.debug "found a match...adding conditions"
+
+            unless column == :first_name
+              @options[:conditions][column] = val
+            end
+
+            @options[:star] = true if @options[:star].blank?
+            @options[:sortable] = true if @options[:sortable].blank?
+            @options[:retry_stale]= true if @options[:retry_stale].blank?
+          end
+
+        }
+
+      end
+    end
+
+    def add_filter_to_with
+      if @status[:f]
+        @logger.debug "i have filter i'll process them..... is_sphinx : #{@status[:is_sphinx]}.....is_facet : #{@status[:is_facets]}"
+        @status[:f].each_pair { |key, val|
+
+          @logger.debug "processing..."
+          column = get_column_name(key)
+          unless @status[:indexes].include?(column)
+            @logger.debug "got column name #{column}...val #{val.class}"
+            if val.is_a?(Hash)
+              @logger.debug "val : #{val} is_sphinx : #{@status[:is_sphinx]}.....is_facet : #{@status[:is_facets]}"
+              range =[]
+              val.each_value {|v| range << v }
+              
+              if range.size < 2
+                range << range[0]
+              end
+
+              if ParseDate.parsedate(range[0])[0].blank?
+                range[0] = range[0].to_f
+                range[1] = range[1].to_f
+              else
+                range[0] = Time.parse(range[0].to_s)         # Time.mktime(dt.year, dt.month, dt.day, dt.hour, dt., 0, 0) if range.first.is_a?(DateTime)
+                range[1] = Time.parse(range[1].to_s) + 1.day #Time.mktime(range.last.year, range.last.month, range.last.day, 0, 0, 0, 0) if range.last.is_a?(DateTime)
+              end
+
+              @options[:with][column] = range.first..range.last if @options[:with][column].blank?
+            elsif val.is_a?(Array)
+              @options[:with][column] = val.first if @options[:with][column].blank?
+            else
+              @options[:with][column] = val if @options[:with][column].blank?
+            end
+
+            @logger.debug ":with : #{@options[:with][column]}"
+          end
+        }
+      end
+    end
 
     # TO DO: what to do with other @ar_options values?
     def read  #:nodoc:
+      return read_with_sphinx if @status[:is_sphinx] || @status[:is_facets]
+
       form_ar_options
       @klass.unscoped do
         @resultset = if self.output_csv?
@@ -307,6 +479,16 @@ module Wice
       invoke_resultset_callbacks
     end
 
+    def read_with_sphinx  #:nodoc:
+      form_ar_options_for_sphinx
+      
+      @klass.unscoped do
+        @resultset =  @status[:is_sphinx] ? @klass.search(@status[:search_text], @ar_options) : @klass.facets(@ar_options)
+        @logger.debug "RESULT_SET : #{@resultset.inspect}" if @status[:is_facets]
+        @resultset
+      end
+    end
+    # Sphinx end
 
     # core workflow methods END
 
@@ -335,7 +517,7 @@ module Wice
 
     def ordered_by?(column)  #:nodoc:
       return nil if @status[:order].blank?
-      if column.main_table && ! offs = @status[:order].index('.')
+      if column.main_table && ! offs = @status[:order].to_s().index('.')
         @status[:order] == column.attribute
       else
         @status[:order] == column.table_alias_or_table_name + '.' + column.attribute
