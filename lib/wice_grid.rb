@@ -671,7 +671,7 @@ module Wice
       custom_order = if @options[:custom_order].has_key?(fully_qualified_column_name)
         @options[:custom_order][fully_qualified_column_name]
       else
-        if view_column = @renderer[fully_qualified_column_name]
+        if !@renderer.blank? and view_column = @renderer[fully_qualified_column_name]
           view_column.custom_order
         else
           nil
