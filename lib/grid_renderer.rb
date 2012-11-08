@@ -137,7 +137,8 @@ module Wice
         :param_name     => :selected,
         :html           => {},
         :select_all_buttons => true,
-        :object_property => :id
+        :object_property => :id,
+        :show_single_select_all_checkbox => false
       }
 
       opts.assert_valid_keys(options.keys)
@@ -146,7 +147,7 @@ module Wice
       column_processor_klass = ViewColumn.get_column_processor(:action)
 
       @columns << column_processor_klass.new(@grid, options[:html], options[:param_name],
-            options[:select_all_buttons], options[:object_property], @view)
+            options[:select_all_buttons], options[:object_property], @view, options[:show_single_select_all_checkbox])
     end
 
     # Defines everything related to a column in a grid - column name, filtering, rendering cells, etc.
