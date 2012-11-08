@@ -98,7 +98,8 @@ module Wice
         :show_filters                  => Defaults::SHOW_FILTER,
         :sorting_dependant_row_cycling => false,
         :html                          => {},
-        :upper_pagination_panel        => Defaults::SHOW_UPPER_PAGINATION_PANEL
+        :upper_pagination_panel        => Defaults::SHOW_UPPER_PAGINATION_PANEL,
+        :lower_pagination_panel        => Defaults::SHOW_LOWER_PAGINATION_PANEL
       }
 
       opts.assert_valid_keys(options.keys)
@@ -256,7 +257,8 @@ module Wice
             column_name,
             rendering.column_link(column, direction, params, options[:extra_request_parameters]),
             :class => link_style)
-          grid.output_buffer << content_tag(:th, col_link, Wice::WgHash.make_hash(:class, css_class))
+          opts = Wice::WgHash.make_hash(:class, css_class).merge(column.html)
+          grid.output_buffer << content_tag(:th, col_link, opts)
           column.css_class = css_class
         else
           if reuse_last_column_for_filter_buttons && last
@@ -331,13 +333,16 @@ module Wice
       end
 
       grid.output_buffer << '</thead><tfoot>'
-      grid.output_buffer << rendering.pagination_panel(number_of_columns, options[:hide_csv_button]) do
-        if pagination_panel_content_html
-          pagination_panel_content_html
-        else
-          pagination_panel_content_html =
-            pagination_panel_content(grid, options[:extra_request_parameters], options[:allow_showing_all_records])
-          pagination_panel_content_html
+
+      if options[:lower_pagination_panel]
+        grid.output_buffer << rendering.pagination_panel(number_of_columns, options[:hide_csv_button]) do
+          if pagination_panel_content_html
+            pagination_panel_content_html
+          else
+            pagination_panel_content_html =
+              pagination_panel_content(grid, options[:extra_request_parameters], options[:allow_showing_all_records])
+            pagination_panel_content_html
+          end
         end
       end
 
@@ -465,7 +470,7 @@ module Wice
       grid.output_buffer << '</div>'
 
       if Rails.env == 'development'
-        grid.output_buffer  <<  javascript_tag(%/ $(document).ready(function(){ \n/ +
+        grid.output_buffer  <<  javascript_tag(%/ jQuery(document).ready(function(){ \n/ +
           %$ if (typeof(WiceGridProcessor) == "undefined"){\n$ +
           %$   alert("wice_grid.js not loaded, WiceGrid cannot proceed!\\n" +\n$ +
           %$     "Make sure that you have loaded wice_grid.js.\\n" +\n$ +
