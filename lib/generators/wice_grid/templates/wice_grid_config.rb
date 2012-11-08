@@ -27,6 +27,9 @@ if defined?(Wice::Defaults)
   # Show the upper pagination panel by default or not
   Wice::Defaults::SHOW_UPPER_PAGINATION_PANEL = false
 
+  # Show the lower pagination panel by default or not
+  Wice::Defaults::SHOW_LOWER_PAGINATION_PANEL = true
+
   # Disabling CSV export by default
   Wice::Defaults::ENABLE_EXPORT_TO_CSV = false
 
