@@ -36,7 +36,8 @@ module Wice
 
     # fields defined from the options parameter
     FIELDS = [:attribute, :name, :html, :filter, :model, :allow_multiple_selection,
-              :in_html, :in_csv, :helper_style, :table_alias, :custom_order, :detach_with_id, :ordering, :auto_reload]
+              :in_html, :in_csv, :helper_style, :table_alias, :custom_order, 
+              :detach_with_id, :ordering, :auto_reload, :show_single_select_all_checkbox]
 
     attr_accessor *FIELDS
 
