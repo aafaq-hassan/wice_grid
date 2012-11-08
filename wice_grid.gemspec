@@ -8,10 +8,10 @@ Gem::Specification.new do |s|
   s.version = "3.2.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
-  s.authors = ["Yuri Leikind"]
+  s.authors = ["Aafaq Hassan"]
   s.date = "2012-09-30"
   s.description = "A Rails grid plugin to create grids with sorting, pagination, and (automatically generated) filters "
-  s.email = "yuri.leikind@gmail.com"
+  s.email = "aafaqhassan@gmail.com"
   s.extra_rdoc_files = [
     "README.rdoc"
   ]
