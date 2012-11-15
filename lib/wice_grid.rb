@@ -111,6 +111,7 @@ module Wice
         :total_entries        => nil,
         :with_paginated_resultset  => nil,
         :with_resultset       => nil,
+        :select               => nil,
 
         # Sphinx begin
         :index                => nil,
@@ -184,7 +185,6 @@ module Wice
       process_params
 
       @ar_options_formed = false
-
     end
 
     # A block executed from within the plugin to process records of the current page.
@@ -320,6 +320,7 @@ module Wice
       @ar_options[:joins]   = @options[:joins]
       @ar_options[:include] = @options[:include]
       @ar_options[:group] = @options[:group]
+      @ar_options[:select] = @options[:select]
     end
 
     def form_ar_options_for_sphinx(opts = {})  #:nodoc:
@@ -368,13 +369,14 @@ module Wice
       @ar_options[:index] = @options[:index] unless @options[:index].blank?
       @ar_options[:index_weights] = @options[:index_weights] unless @options[:index_weights].blank?
       @ar_options[:match_mode] = @options[:match_mode] unless @options[:match_mode].blank?
-      @ar_options[:joins]   = @options[:joins] unless  @options[:joins].blank?
-      @ar_options[:include] = @options[:include]  unless  @options[:include].blank?
-      @ar_options[:with] = @options[:with]  unless  @options[:with].blank?
-      @ar_options[:without] = @options[:without]  unless  @options[:without].blank?
+      @ar_options[:joins] = @options[:joins] unless @options[:joins].blank?
+      @ar_options[:include] = @options[:include] unless @options[:include].blank?
+      @ar_options[:with] = @options[:with] unless @options[:with].blank?
+      @ar_options[:without] = @options[:without] unless @options[:without].blank?
       @ar_options[:conditions] = @options[:conditions] unless @options[:conditions].blank?
       @ar_options[:star] = @options[:star] unless @options[:star].blank?
       @ar_options[:retry_stale] = @options[:retry_stale] unless @options[:retry_stale].blank?
+      @ar_options[:select] = @options[:select] unless @options[:select].blank?
       @logger.debug "ar_options_inspect \n #{@ar_options.inspect}"
       @ar_options
     end
@@ -460,20 +462,20 @@ module Wice
           # @relation.find(:all, @ar_options)
           @relation.
             includes(@ar_options[:include]).
-            joins(   @ar_options[:joins]).
-            order(   @ar_options[:order]).
-            where(   @ar_options[:conditions])
-
+            joins(@ar_options[:joins]).
+            order(@ar_options[:order]).
+            where(@ar_options[:conditions]).
+            select(@ar_options[:select])
         else
           # p @ar_options
           @relation.
-            page(    @ar_options[:page]).
-            per(     @ar_options[:per_page]).
+            page(@ar_options[:page]).
+            per(@ar_options[:per_page]).
             includes(@ar_options[:include]).
-            joins(   @ar_options[:joins]).
-            order(   @ar_options[:order]).
-            where(   @ar_options[:conditions])
-
+            joins(@ar_options[:joins]).
+            order(@ar_options[:order]).
+            where(@ar_options[:conditions]).
+            select(@ar_options[:select])
         end
       end
       invoke_resultset_callbacks
@@ -575,7 +577,8 @@ module Wice
 
     def count  #:nodoc:
       form_ar_options(:skip_ordering => true, :forget_generated_options => true)
-      @relation.count(:conditions => @ar_options[:conditions], :joins => @ar_options[:joins], :include => @ar_options[:include], :group => @ar_options[:group])
+      @relation.count(:conditions => @ar_options[:conditions], :joins => @ar_options[:joins], 
+        :include => @ar_options[:include], :group => @ar_options[:group], :select => @ar_options[:select])
     end
 
     alias_method :size, :count
@@ -696,7 +699,7 @@ module Wice
     end
 
     def complete_column_name(col_name)  #:nodoc:
-      if col_name.index('.') # already has a table name
+      if col_name.to_s.index('.') # already has a table name
         col_name
       else # add the default table
         "#{@klass.table_name}.#{col_name}"
@@ -718,7 +721,8 @@ module Wice
         @relation.find(:all, :joins => @ar_options[:joins],
                           :include => @ar_options[:include],
                           :group => @ar_options[:group],
-                          :conditions => @options[:conditions])
+                          :conditions => @options[:conditions],
+                          :select => @ar_options[:select])
       end
     end
 
@@ -729,7 +733,8 @@ module Wice
           :joins => @ar_options[:joins],
           :include => @ar_options[:include],
           :group => @ar_options[:group],
-          :conditions => @options[:conditions]
+          :conditions => @options[:conditions],
+          :select => @ar_options[:select]
         )
       end
     end
@@ -742,7 +747,8 @@ module Wice
                           :include    => @ar_options[:include],
                           :group      => @ar_options[:group],
                           :conditions => @ar_options[:conditions],
-                          :order      => @ar_options[:order])
+                          :order      => @ar_options[:order],
+                          :select => @ar_options[:select])
       end
     end
 
