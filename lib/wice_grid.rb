@@ -38,9 +38,9 @@ module Wice
       ActiveSupport.on_load :action_view do
         ::ActionView::Base.class_eval { include Wice::GridViewHelper }
         [ActionView::Helpers::AssetTagHelper,
-         ActionView::Helpers::TagHelper,
-         ActionView::Helpers::JavaScriptHelper,
-         ActionView::Helpers::FormTagHelper].each do |m|
+          ActionView::Helpers::TagHelper,
+          ActionView::Helpers::JavaScriptHelper,
+          ActionView::Helpers::FormTagHelper].each do |m|
           JsCalendarHelpers.send(:include, m)
         end
 
@@ -86,9 +86,9 @@ module Wice
 
       # validate :order_direction
       if opts[:order_direction] && ! (opts[:order_direction] == 'asc'  ||
-                                      opts[:order_direction] == :asc   ||
-                                      opts[:order_direction] == 'desc' ||
-                                      opts[:order_direction] == :desc)
+            opts[:order_direction] == :asc   ||
+            opts[:order_direction] == 'desc' ||
+            opts[:order_direction] == :desc)
         raise WiceGridArgumentError.new(":order_direction must be either 'asc' or 'desc'.")
       end
 
@@ -117,12 +117,10 @@ module Wice
         :index                => nil,
         :index_weights        => nil,
         :search_text          => nil,
-        :match_mode           => nil,
         :rank_mode            => nil,
         :star                 =>nil,
         :with                 => nil,
         :without              => nil,
-        :sort_mode            => nil,
         :is_sphinx            => false,
         :is_facets            => false
         # Sphinx end
@@ -152,15 +150,11 @@ module Wice
       @status = HashWithIndifferentAccess.new
 
       if @options[:order]
-        # Sphinx begin
-        if @options[:sort_mode].blank?
-          @status[:order_direction] = @options[:order_direction].to_s
-          @status[:order] = @options[:order].to_s
-        else
-          @status[:sort_mode] = @options[:sort_mode]
-          @status[:order] = @options[:order]
-        end
-        # Sphinx end
+        @options[:order] = @options[:order].to_s
+        @options[:order_direction] = @options[:order_direction].to_s
+
+        @status[:order_direction] = @options[:order_direction]
+        @status[:order] = @options[:order]
       end
       @status[:total_entries] = @options[:total_entries]
       @status[:per_page] = @options[:per_page]
@@ -169,16 +163,7 @@ module Wice
       @status[:f] = @options[:f]
 
       # Sphinx begin
-      @status[:index] = @options[:index] unless @options[:index].blank?
-      @status[:index_weights] = @options[:index_weights] unless @options[:index_weights].blank?
-      @status[:search_text] = @options[:search_text] unless  @options[:search_text].blank?
-      @status[:match_mode] = @options[:match_mode] unless  @options[:match_mode].blank?
-      @status[:with] = @options[:with] unless  @options[:with].blank?
-      @status[:without] = @options[:without] unless  @options[:without].blank?
-      @status [:is_sphinx]= @options[:is_sphinx]
-      @status [:is_facets]= @options[:is_facets]
-      @klass.define_indexes if @status[:is_sphinx] or @status[:is_facets]
-      @status[:indexes] = collect_indexes if @status[:is_sphinx] or @status[:is_facets]
+      @status[:indexes] = collect_indexes if @options[:is_sphinx] || @options[:is_facets]
       # Sphinx end
 
       process_loading_query
@@ -244,8 +229,8 @@ module Wice
         column = @table_column_matrix.get_column_in_default_model_class_by_column_name(column_name)
         if column.nil?
           raise WiceGridArgumentError.new("Column '#{column_name}' is not found in table '#{@klass.table_name}'! " +
-            "If '#{column_name}' belongs to another table you should declare it in :include or :join when initialising " +
-            "the grid, and specify :model in column declaration.")
+              "If '#{column_name}' belongs to another table you should declare it in :include or :join when initialising " +
+              "the grid, and specify :model in column declaration.")
         end
         main_table = true
         table_name = @table_column_matrix.default_model_class.table_name
@@ -266,17 +251,20 @@ module Wice
 
     # Sphinx begin
     def collect_indexes
-      all_indexes =[]
+      all_indexes = []
 
-      for index in @klass.sphinx_indexes.first.fields
-        all_indexes << index.unique_name
+      ThinkingSphinx::Configuration.instance
+      .indices_for_references(:"#{@klass.to_s.downcase}").each do |index| 
+        index.sources.collect(&:fields).flatten.each do |field| 
+          all_indexes << field.name
+        end
       end
 
       all_indexes
     end
 
     def form_ar_options(opts = {})  #:nodoc:
-      return form_ar_options_for_sphinx if @status[:is_sphinx] || @status[:is_facets]
+      return form_ar_options_for_sphinx if @options[:is_sphinx] || @options[:is_facets]
 
       return if @ar_options_formed
       @ar_options_formed = true unless opts[:forget_generated_options]
@@ -334,30 +322,15 @@ module Wice
       end
 
       if !opts[:skip_ordering] && @status[:order]
-        @logger.debug "form_ar-options_status_inspect \n#{@status.inspect}"
+        @logger.debug "@status inspect: \n#{@status.inspect}"
         
-        unless @status[:sort_mode].blank?
-          @ar_options[:order] = get_column_name(@status[:order])
-          
-          if @status[:order_direction].blank?
-            @ar_options[:sort_mode] = @status[:sort_mode]
-          else
-            @ar_options[:sort_mode] = @status[:order_direction].to_sym
-          end
-        else
-          @ar_options[:sql_order] = @status[:order]
-          @ar_options[:sql_order] = "#{@ar_options[:sql_order]} " \
-            "#{@status[:order_direction]}" \
-            unless @status[:order_direction].blank?
-        end
+        @ar_options[:order] = get_column_name(@status[:order])
+        @ar_options[:order] = "#{@status[:order]} #{@status[:order_direction]}"
         
-        @logger.debug "ar_options_order : #{@ar_options[:order]} and " \
-          "sort_mode : #{@ar_options[:sort_mode]} and sql_order : " \
-          "#{@ar_options[:sql_order]} and order_direction : " \
-          "#{@ar_options[:order_direction]}" 
+        @logger.debug "@ar_options order: #{@ar_options[:order]}" 
       end
 
-      if self.output_html? or self.output_csv?
+      if self.output_html? || self.output_csv?
         @ar_options[:per_page] = @status[:pp] || @status[:per_page]
         @ar_options[:page] = @status[:page]
         @ar_options[:total_entries] = @status[:total_entries] if @status[:total_entries]
@@ -365,19 +338,26 @@ module Wice
 
       add_filter_to_conditions
       add_filter_to_with
-
+      
       @ar_options[:index] = @options[:index] unless @options[:index].blank?
       @ar_options[:index_weights] = @options[:index_weights] unless @options[:index_weights].blank?
-      @ar_options[:match_mode] = @options[:match_mode] unless @options[:match_mode].blank?
-      @ar_options[:joins] = @options[:joins] unless @options[:joins].blank?
-      @ar_options[:include] = @options[:include] unless @options[:include].blank?
+      unless @options[:joins].blank?
+        @ar_options[:sql] = {}
+        @ar_options[:sql][:joins] = @options[:joins]
+      end
+      unless @options[:include].blank?
+        @ar_options[:sql] ||= {}  
+        @ar_options[:sql][:include] = @options[:include]
+      end
       @ar_options[:with] = @options[:with] unless @options[:with].blank?
       @ar_options[:without] = @options[:without] unless @options[:without].blank?
       @ar_options[:conditions] = @options[:conditions] unless @options[:conditions].blank?
       @ar_options[:star] = @options[:star] unless @options[:star].blank?
       @ar_options[:retry_stale] = @options[:retry_stale] unless @options[:retry_stale].blank?
       @ar_options[:select] = @options[:select] unless @options[:select].blank?
+      
       @logger.debug "ar_options_inspect \n #{@ar_options.inspect}"
+      
       @ar_options
     end
 
@@ -415,7 +395,8 @@ module Wice
 
     def add_filter_to_with
       if @status[:f]
-        @logger.debug "i have filter i'll process them..... is_sphinx : #{@status[:is_sphinx]}.....is_facet : #{@status[:is_facets]}"
+        @logger.debug "i have filter i'll process them..... " \
+          "is_sphinx: #{@options[:is_sphinx]}.....is_facet: #{@options[:is_facets]}"
         @status[:f].each_pair { |key, val|
 
           @logger.debug "processing..."
@@ -423,7 +404,8 @@ module Wice
           unless @status[:indexes].include?(column)
             @logger.debug "got column name #{column}...val #{val.class}"
             if val.is_a?(Hash)
-              @logger.debug "val : #{val} is_sphinx : #{@status[:is_sphinx]}.....is_facet : #{@status[:is_facets]}"
+              @logger.debug "val : #{val} is_sphinx: " \
+                "#{@options[:is_sphinx]}.....is_facet: #{@options[:is_facets]}"
               range =[]
               val.each_value {|v| range << v }
               
@@ -435,8 +417,8 @@ module Wice
                 range[0] = range[0].to_f
                 range[1] = range[1].to_f
               else
-                range[0] = Time.parse(range[0].to_s)         # Time.mktime(dt.year, dt.month, dt.day, dt.hour, dt., 0, 0) if range.first.is_a?(DateTime)
-                range[1] = Time.parse(range[1].to_s) + 1.day #Time.mktime(range.last.year, range.last.month, range.last.day, 0, 0, 0, 0) if range.last.is_a?(DateTime)
+                range[0] = Time.zone.parse(range[0].to_s) 
+                range[1] = Time.zone.parse(range[1].to_s) + 1.day
               end
 
               @options[:with][column] = range.first..range.last if @options[:with][column].blank?
@@ -454,7 +436,7 @@ module Wice
 
     # TO DO: what to do with other @ar_options values?
     def read  #:nodoc:
-      return read_with_sphinx if @status[:is_sphinx] || @status[:is_facets]
+      return read_with_sphinx if @options[:is_sphinx] || @options[:is_facets]
 
       form_ar_options
       @klass.unscoped do
@@ -484,11 +466,10 @@ module Wice
     def read_with_sphinx  #:nodoc:
       form_ar_options_for_sphinx
       
-      @klass.unscoped do
-        @resultset =  @status[:is_sphinx] ? @klass.search(@status[:search_text], @ar_options) : @klass.facets(@ar_options)
-        @logger.debug "RESULT_SET : #{@resultset.inspect}" if @status[:is_facets]
-        @resultset
-      end
+      @resultset =  @options[:is_sphinx] ? 
+        @klass.search(@options[:search_text], @ar_options) : @klass.facets(@ar_options)
+      @logger.debug "RESULT_SET : #{@resultset.inspect}" if @options[:is_facets]
+      @resultset
     end
     # Sphinx end
 
@@ -627,8 +608,8 @@ module Wice
 
     def dump_status #:nodoc:
       "   params: #{params[name].inspect}\n"  +
-      "   status: #{@status.inspect}\n" +
-      "   ar_options #{@ar_options.inspect}\n"
+        "   status: #{@status.inspect}\n" +
+        "   ar_options #{@ar_options.inspect}\n"
     end
 
 
@@ -719,10 +700,10 @@ module Wice
       form_ar_options
       @klass.unscoped do
         @relation.find(:all, :joins => @ar_options[:joins],
-                          :include => @ar_options[:include],
-                          :group => @ar_options[:group],
-                          :conditions => @options[:conditions],
-                          :select => @ar_options[:select])
+          :include => @ar_options[:include],
+          :group => @ar_options[:group],
+          :conditions => @options[:conditions],
+          :select => @ar_options[:select])
       end
     end
 
@@ -744,11 +725,11 @@ module Wice
       form_ar_options
       @klass.unscoped do
         @relation.find(:all, :joins      => @ar_options[:joins],
-                          :include    => @ar_options[:include],
-                          :group      => @ar_options[:group],
-                          :conditions => @ar_options[:conditions],
-                          :order      => @ar_options[:order],
-                          :select => @ar_options[:select])
+          :include    => @ar_options[:include],
+          :group      => @ar_options[:group],
+          :conditions => @ar_options[:conditions],
+          :order      => @ar_options[:order],
+          :select => @ar_options[:select])
       end
     end
 
@@ -957,7 +938,7 @@ module Wice
         return false
       end
       [" #{negation}  #{@column.alias_or_table_name(table_alias)}.#{@column.name} #{::Wice.get_string_matching_operators(@column.model)} ?",
-          '%' + string_fragment + '%']
+        '%' + string_fragment + '%']
     end
 
   end
@@ -1024,5 +1005,4 @@ module Wice
       return conditions
     end
   end
-
 end
