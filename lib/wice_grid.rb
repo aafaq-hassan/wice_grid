@@ -117,7 +117,7 @@ module Wice
         :index                => nil,
         :index_weights        => nil,
         :search_text          => nil,
-        :rank_mode            => nil,
+        :ranker               => nil,
         :star                 =>nil,
         :with                 => nil,
         :without              => nil,
@@ -325,7 +325,7 @@ module Wice
         @logger.debug "@status inspect: \n#{@status.inspect}"
         
         @ar_options[:order] = get_column_name(@status[:order])
-        @ar_options[:order] = "#{@status[:order]} #{@status[:order_direction]}"
+        @ar_options[:order] = "#{@ar_options[:order]} #{@status[:order_direction]}"
         
         @logger.debug "@ar_options order: #{@ar_options[:order]}" 
       end
@@ -352,6 +352,7 @@ module Wice
       @ar_options[:with] = @options[:with] unless @options[:with].blank?
       @ar_options[:without] = @options[:without] unless @options[:without].blank?
       @ar_options[:conditions] = @options[:conditions] unless @options[:conditions].blank?
+      @ar_options[:ranker] = @options[:ranker] unless @options[:ranker].blank?
       @ar_options[:star] = @options[:star] unless @options[:star].blank?
       @ar_options[:retry_stale] = @options[:retry_stale] unless @options[:retry_stale].blank?
       @ar_options[:select] = @options[:select] unless @options[:select].blank?
@@ -466,7 +467,7 @@ module Wice
     def read_with_sphinx  #:nodoc:
       form_ar_options_for_sphinx
       
-      @resultset =  @options[:is_sphinx] ? 
+      @resultset = @options[:is_sphinx] ? 
         @klass.search(@options[:search_text], @ar_options) : @klass.facets(@ar_options)
       @logger.debug "RESULT_SET : #{@resultset.inspect}" if @options[:is_facets]
       @resultset
