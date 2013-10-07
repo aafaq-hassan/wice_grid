@@ -118,7 +118,7 @@ module Wice
         :index_weights        => nil,
         :search_text          => nil,
         :ranker               => nil,
-        :star                 =>nil,
+        :star                 => nil,
         :with                 => nil,
         :without              => nil,
         :is_sphinx            => false,
