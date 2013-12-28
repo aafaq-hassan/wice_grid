@@ -448,7 +448,8 @@ module Wice
             joins(@ar_options[:joins]).
             order(@ar_options[:order]).
             where(@ar_options[:conditions]).
-            select(@ar_options[:select])
+            select(@ar_options[:select]).
+            group(@ar_options[:group])
         else
           # p @ar_options
           @relation.
@@ -458,7 +459,8 @@ module Wice
             joins(@ar_options[:joins]).
             order(@ar_options[:order]).
             where(@ar_options[:conditions]).
-            select(@ar_options[:select])
+            select(@ar_options[:select]).
+            group(@ar_options[:group])
         end
       end
       invoke_resultset_callbacks
