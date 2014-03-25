@@ -44,12 +44,12 @@ module Wice
             :class => 'clickable select_all', :id => 'select_all_checkbox'),
           :class => 'clickable select_all', :title => NlMessage['select_all'], 
           :id => 'select_all_span', 
-          :onclick => 'javascript: $(this).hide(); $("#select_all_checkbox").prop('checked',false); $("#deselect_all_span").show();') + '' +
+          :onclick => 'javascript: $(this).hide(); $("#select_all_checkbox").prop("checked",false); $("#deselect_all_span").show();') + '' +
           content_tag(:span, check_box_tag("deselect_all", nil, true, 
             :class => 'clickable deselect_all', :id => 'deselect_all_checkbox'),
           :class => 'clickable deselect_all', :title => NlMessage['deselect_all'], 
           :id => 'deselect_all_span', :style => 'display:none', 
-          :onclick => 'javascript:  $(this).hide(); $("#deselect_all_checkbox").prop('checked', true); $("#select_all_span").show();')
+          :onclick => 'javascript:  $(this).hide(); $("#deselect_all_checkbox").prop("checked", true); $("#select_all_span").show();')
       else
         html = content_tag(:span, image_tag(Defaults::TICK_ALL_ICON, :alt => NlMessage['select_all']),
           :class => 'clickable select_all', :title => NlMessage['select_all']) + ' ' +
