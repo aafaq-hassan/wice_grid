@@ -446,15 +446,12 @@ module Wice
         @resultset = @relation.page(@ar_options[:page]).per(@ar_options[:per_page]) unless self.output_csv?
         @resultset ||= @relation
         
-        @resultset = @resultset.
-          includes(@ar_options[:include]).
-          joins(@ar_options[:joins]).
-          order(@ar_options[:order]).
-          where(@ar_options[:conditions]).
-          select(@ar_options[:select]).
-          group(@ar_options[:group])
+        @resultset = @resultset.includes(@ar_options[:include]).joins(@ar_options[:joins])
+        .where(@ar_options[:conditions]).select(@ar_options[:select])
+        .group(@ar_options[:group]).order(@ar_options[:order])
 
-        @resultset = @resultset.from("`#{@klass.table_name}` USE INDEX(#{@ar_options[:sql_index]})").all if @ar_options[:sql_index]
+        @resultset = @resultset.from("`#{@klass.table_name}` USE INDEX(#{@ar_options[:sql_index]})").all \
+          if @ar_options[:sql_index] && !self.output_csv?
       end
       invoke_resultset_callbacks
     end
