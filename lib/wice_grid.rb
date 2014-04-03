@@ -112,6 +112,7 @@ module Wice
         :with_paginated_resultset  => nil,
         :with_resultset       => nil,
         :select               => nil,
+        :sql_index            => nil,
 
         # Sphinx begin
         :index                => nil,
@@ -309,6 +310,7 @@ module Wice
       @ar_options[:include] = @options[:include]
       @ar_options[:group] = @options[:group]
       @ar_options[:select] = @options[:select]
+      @ar_options[:sql_index] = @options[:sql_index]
     end
 
     def form_ar_options_for_sphinx(opts = {})  #:nodoc:
@@ -441,27 +443,18 @@ module Wice
 
       form_ar_options
       @klass.unscoped do
-        @resultset = if self.output_csv?
-          # @relation.find(:all, @ar_options)
-          @relation.
-            includes(@ar_options[:include]).
-            joins(@ar_options[:joins]).
-            order(@ar_options[:order]).
-            where(@ar_options[:conditions]).
-            select(@ar_options[:select]).
-            group(@ar_options[:group])
-        else
-          # p @ar_options
-          @relation.
-            page(@ar_options[:page]).
-            per(@ar_options[:per_page]).
-            includes(@ar_options[:include]).
-            joins(@ar_options[:joins]).
-            order(@ar_options[:order]).
-            where(@ar_options[:conditions]).
-            select(@ar_options[:select]).
-            group(@ar_options[:group])
-        end
+        @resultset = @relation.page(@ar_options[:page]).per(@ar_options[:per_page]) unless self.output_csv?
+        @resultset ||= @relation
+        
+        @resultset = @resultset.
+          includes(@ar_options[:include]).
+          joins(@ar_options[:joins]).
+          order(@ar_options[:order]).
+          where(@ar_options[:conditions]).
+          select(@ar_options[:select]).
+          group(@ar_options[:group])
+
+        @resultset = @resultset.from("`#{@klass.table_name}` USE INDEX(#{@ar_options[:sql_index]})").all if @ar_options[:sql_index]
       end
       invoke_resultset_callbacks
     end
