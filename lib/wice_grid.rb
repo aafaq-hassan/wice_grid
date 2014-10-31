@@ -258,7 +258,7 @@ module Wice
       .indices_for_references(:"#{@klass.to_s.downcase}").each do |index| 
         index.sources.collect(&:fields).flatten.each do |field| 
           all_indexes << field.name
-        end
+        end if index.respond_to?(:sources)
       end
 
       all_indexes
